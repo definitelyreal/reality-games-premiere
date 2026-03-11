@@ -3,19 +3,85 @@
 :root {
   --color-build: #3b82f6;
   --color-burn: #ef4444;
-  --color-bg: #0a0a0a;
-  --color-surface: #141414;
-  --color-border: #262626;
-  --color-text: #fafafa;
-  --color-text-muted: #a3a3a3;
+  --color-build-glow: rgba(59, 130, 246, 0.15);
+  --color-burn-glow: rgba(239, 68, 68, 0.15);
+  --color-bg: #050505;
+  --color-surface: #0f0f0f;
+  --color-surface-raised: #161616;
+  --color-border: #1e1e1e;
+  --color-border-hover: #333;
+  --color-text: #f0f0f0;
+  --color-text-muted: #888;
+  --color-text-dim: #555;
+  --color-accent: #fff;
 }
 
 body {
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
 }
 
 ::selection {
   background: rgba(255, 255, 255, 0.15);
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+/* Glow pulse animation for side choice */
+@keyframes glow-build {
+  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.2); }
+}
+@keyframes glow-burn {
+  0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(239, 68, 68, 0.2); }
+}
+
+.glow-build { animation: glow-build 3s ease-in-out infinite; }
+.glow-burn { animation: glow-burn 3s ease-in-out infinite; }
+
+/* Fade in animation */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+/* Stagger children */
+.stagger > * { animation: fade-up 0.4s ease-out forwards; opacity: 0; }
+.stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger > *:nth-child(2) { animation-delay: 0.1s; }
+.stagger > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger > *:nth-child(6) { animation-delay: 0.3s; }
+.stagger > *:nth-child(7) { animation-delay: 0.35s; }
+.stagger > *:nth-child(8) { animation-delay: 0.4s; }
+.stagger > *:nth-child(9) { animation-delay: 0.45s; }
+.stagger > *:nth-child(10) { animation-delay: 0.5s; }
+
+/* Trailer modal backdrop */
+.trailer-backdrop {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }

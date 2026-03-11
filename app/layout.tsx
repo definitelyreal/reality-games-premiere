@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Reality Games: Play For Real",
+  title: "Reality Games: Premiere + Afterparty",
   description:
-    "Reality Games premiere. May 16, 2026. Victoria Theater, San Francisco.",
+    "Reality Games premiere. May 16, 2026. Victoria Theater, San Francisco. Choose your side.",
 };
 
 export default function RootLayout({
@@ -14,6 +14,21 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link
+          rel="preconnect"
+          href="https://fonts.googleapis.com"
+        />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className="min-h-screen antialiased">{children}</body>
     </html>
   );
