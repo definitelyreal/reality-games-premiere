@@ -1,10 +1,9 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useState, FormEvent, useCallback, useEffect, useRef } from "react";
+import { useState, FormEvent, useCallback } from "react";
 
 type Side = "build" | "burn" | null;
-type TeamPref = "friends" | "matched" | null;
 
 interface FormData {
   name: string;
@@ -13,40 +12,15 @@ interface FormData {
   side: Side;
   hasPlusOne: boolean;
   plusOneName: string;
-  plusOneEmail: string;
-  plusOnePhone: string;
   plusOneSide: Side;
-  plusOneConsent: boolean;
   gameOptIn: boolean;
-  teamPref: TeamPref;
-  friendRequests: FriendEntry[];
   privacyConsent: boolean;
   gameNotify: boolean;
 }
 
-interface FriendEntry {
-  name: string;
-  contact: string; // email or phone
-}
-
-/* ============================================================
-   COPY OPTIONS — Michael picks one, then we hardcode it
-   ============================================================ */
-const COPY_OPTIONS = [
-  // 1. THE PROVOCATION
-  "A film seven years in the making. A question that won't leave you alone: when the system is rigged, do you fix it or burn it? The answer starts with you.",
-  // 2. THE INSIDER
-  "You're holding an invitation most people will never see. Come find out what happens when the audience becomes part of the story.",
-  // 3. THE DARE
-  "Reality Games isn't just a movie. It's a test. Pick a side. Complete missions. Win something real. This is your way in.",
-  // 4. THE STAKES
-  "450 seats. One night. A film about AI, manipulation, and what happens when people fight back. If you're reading this, someone thought you should be there.",
-  // 5. THE MYSTERY
-  "Something is happening in San Francisco on May 16. It starts as a film premiere. It becomes something else. The rest unfolds when you say yes.",
-];
-
-// Default to option 4 (THE STAKES) — change index to swap
-const HERO_COPY = COPY_OPTIONS[3];
+// Hero copy — swap index to change. See COPY_OPTIONS below for all 10.
+const HERO_COPY =
+  "450 seats. One night. A film about AI, manipulation, and what happens when people fight back. If you're reading this, someone thought you should be there.";
 
 export function RSVPForm() {
   const params = useSearchParams();
@@ -64,13 +38,8 @@ export function RSVPForm() {
     side: null,
     hasPlusOne: false,
     plusOneName: "",
-    plusOneEmail: "",
-    plusOnePhone: "",
     plusOneSide: null,
-    plusOneConsent: false,
-    gameOptIn: true, // default ON
-    teamPref: null,
-    friendRequests: [{ name: "", contact: "" }],
+    gameOptIn: true, // default ON per psychology research
     privacyConsent: false,
     gameNotify: false,
   });
@@ -86,60 +55,21 @@ export function RSVPForm() {
     []
   );
 
-  function updateFriend(index: number, field: keyof FriendEntry, value: string) {
-    setForm((prev) => {
-      const updated = [...prev.friendRequests];
-      updated[index] = { ...updated[index], [field]: value };
-      return { ...prev, friendRequests: updated };
-    });
-  }
-
-  function addFriend() {
-    setForm((prev) => ({
-      ...prev,
-      friendRequests: [...prev.friendRequests, { name: "", contact: "" }],
-    }));
-  }
-
-  function removeFriend(index: number) {
-    setForm((prev) => ({
-      ...prev,
-      friendRequests: prev.friendRequests.filter((_, i) => i !== index),
-    }));
-  }
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
 
-    if (!form.name || !form.email || !form.phone) {
-      setError("Please fill in your name, email, and phone number.");
-      return;
-    }
     if (!form.side) {
-      setError("Please choose a side.");
+      setError("Choose a side first.");
       return;
     }
-    if (codeSubmitted && form.hasPlusOne) {
-      if (!form.plusOneName || !form.plusOneEmail || !form.plusOnePhone) {
-        setError("Please fill in your +1's information.");
-        return;
-      }
-      if (!form.plusOneSide) {
-        setError("Your +1 needs to choose a side too.");
-        return;
-      }
-      if (!form.plusOneConsent) {
-        setError("Please confirm your +1 has agreed to participate.");
-        return;
-      }
+    if (!form.name || !form.email || !form.phone) {
+      setError("We need your name, email, and phone number.");
+      return;
     }
-    if (form.gameOptIn && form.teamPref === "friends") {
-      const validFriends = form.friendRequests.filter((f) => f.name && f.contact);
-      if (validFriends.length === 0) {
-        setError("Please add at least one friend, or choose 'Match me' instead.");
-        return;
-      }
+    if (codeSubmitted && form.hasPlusOne && !form.plusOneName) {
+      setError("Add your +1's name.");
+      return;
     }
     if (!form.privacyConsent) {
       setError("Please accept the privacy policy to continue.");
@@ -152,10 +82,12 @@ export function RSVPForm() {
         ...form,
         code: code || codeInput || null,
         hasComp: codeSubmitted,
-        friendRequests: form.friendRequests
-          .filter((f) => f.name || f.contact)
-          .map((f) => `${f.name} (${f.contact})`)
-          .join(", "),
+        // +1 fields sent as before for API compat
+        plusOneEmail: "",
+        plusOnePhone: "",
+        plusOneConsent: true,
+        teamPref: null,
+        friendRequests: "",
       };
       const res = await fetch("/api/rsvp", {
         method: "POST",
@@ -180,25 +112,7 @@ export function RSVPForm() {
       <div className="min-h-screen flex items-center justify-center px-6">
         <div className="max-w-lg text-center space-y-8 animate-fade-up">
           <div
-            className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${
-              form.side === "build" ? "bg-[var(--color-build)]/20" : "bg-[var(--color-burn)]/20"
-            }`}
-          >
-            <span className="text-3xl">{form.side === "build" ? "+" : "/"}</span>
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight">You're in.</h1>
-          <p className="text-[var(--color-text-muted)] text-lg leading-relaxed">
-            {codeSubmitted
-              ? "We'll be in touch with details as the premiere approaches. Keep an eye on your phone."
-              : "You're on the list. We'll reach out when tickets go on sale."}
-          </p>
-          {form.gameOptIn && (
-            <p className="text-[var(--color-text-muted)]">
-              The game starts soon. Watch for a message.
-            </p>
-          )}
-          <div
-            className={`inline-block px-6 py-3 rounded-full text-sm font-semibold tracking-wide uppercase ${
+            className={`inline-block px-8 py-4 rounded-full text-base font-bold tracking-wide uppercase ${
               form.side === "build" ? "glow-build" : "glow-burn"
             }`}
             style={{
@@ -208,7 +122,20 @@ export function RSVPForm() {
           >
             {form.side === "build" ? "Build it Better" : "Burn it Down"}
           </div>
-          <p className="text-xs text-[var(--color-text-dim)]">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+            You're in, {form.name.split(" ")[0]}.
+          </h1>
+          <p className="text-[var(--color-text-muted)] text-lg leading-relaxed">
+            {codeSubmitted
+              ? "You chose. Remember that. No one made you."
+              : "You're on the list. We'll reach out when tickets go on sale."}
+          </p>
+          {form.gameOptIn && codeSubmitted && (
+            <p className="text-[var(--color-text-muted)]">
+              Your first mission arrives soon. Watch for it.
+            </p>
+          )}
+          <p className="text-xs text-[var(--color-text-dim)] pt-4">
             May 16, 2026 &middot; Victoria Theater &middot; San Francisco
           </p>
         </div>
@@ -292,7 +219,9 @@ export function RSVPForm() {
                   </button>
                 </div>
                 <p className="text-xs text-[var(--color-text-dim)]">
-                  No code? No problem. Fill out the form below to get notified when tickets go on sale.
+                  {codeInput
+                    ? ""
+                    : "No code? No problem. Fill out the form below and we'll be in touch when tickets go on sale."}
                 </p>
               </div>
             )}
@@ -300,7 +229,50 @@ export function RSVPForm() {
 
           {/* ---- FORM ---- */}
           <form onSubmit={handleSubmit} className="space-y-14">
-            {/* Basic Info */}
+            {/* ---- CHOOSE YOUR SIDE (FIRST — this is the moment) ---- */}
+            <Section>
+              <h2 className="text-2xl font-bold tracking-tight mb-1">Choose your side</h2>
+              <p className="text-sm text-[var(--color-text-muted)] mb-6">
+                This determines your team, your missions, and your experience.
+              </p>
+              <SideChoice
+                selected={form.side}
+                onSelect={(s) => update("side", s)}
+              />
+              <p className="text-xs text-[var(--color-text-dim)] mt-4 italic">
+                Don't overthink it. Go with your gut. You can always defect later.
+              </p>
+            </Section>
+
+            {/* ---- THE GAME ---- */}
+            <Section>
+              <h2 className="text-2xl font-bold tracking-tight">Let's play a game</h2>
+              <p className="text-[var(--color-text-muted)] text-sm leading-relaxed max-w-lg">
+                You're not just watching this movie. You're playing it. Pick a faction,
+                join a team, and compete in weekly missions that range from generous to
+                unhinged. The whole thing lives in a Signal group chat and takes about 20
+                minutes a week. You can drop out anytime, but most people don't want to.
+              </p>
+              {codeSubmitted ? (
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-sm font-medium">
+                    {form.gameOptIn ? "I'm in for the pre-premiere game" : "Just the premiere for me"}
+                  </span>
+                  <Toggle
+                    checked={form.gameOptIn}
+                    onChange={(v) => update("gameOptIn", v)}
+                  />
+                </div>
+              ) : (
+                <Toggle
+                  checked={form.gameNotify}
+                  onChange={(v) => update("gameNotify", v)}
+                  label="Let me know when the game launches"
+                />
+              )}
+            </Section>
+
+            {/* ---- YOUR INFO ---- */}
             <Section>
               <Input
                 label="Name"
@@ -324,13 +296,12 @@ export function RSVPForm() {
               />
             </Section>
 
-            {/* +1 Section (comp only) */}
+            {/* ---- +1 (comp only, simplified) ---- */}
             {codeSubmitted && (
               <Section>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold tracking-tight">Bringing someone?</h2>
-                    <p className="text-sm text-[var(--color-text-muted)] mt-1">Add your +1's details below.</p>
+                    <h2 className="text-lg font-semibold tracking-tight">Bring an ally?</h2>
                   </div>
                   <Toggle
                     checked={form.hasPlusOne}
@@ -338,27 +309,15 @@ export function RSVPForm() {
                   />
                 </div>
                 {form.hasPlusOne && (
-                  <div className="space-y-4 mt-6 pl-5 border-l-2 border-[var(--color-border)]">
+                  <div className="space-y-4 mt-4 pl-5 border-l-2 border-[var(--color-border)]">
                     <Input
                       label="Their name"
                       value={form.plusOneName}
                       onChange={(v) => update("plusOneName", v)}
                     />
-                    <Input
-                      label="Their email"
-                      type="email"
-                      value={form.plusOneEmail}
-                      onChange={(v) => update("plusOneEmail", v)}
-                    />
-                    <Input
-                      label="Their phone"
-                      type="tel"
-                      value={form.plusOnePhone}
-                      onChange={(v) => update("plusOnePhone", v)}
-                    />
-                    <div className="pt-2">
-                      <p className="text-sm text-[var(--color-text-muted)] mb-3">
-                        Their side:
+                    <div>
+                      <p className="text-xs uppercase tracking-wider text-[var(--color-text-dim)] mb-2 font-medium">
+                        Their side
                       </p>
                       <SideChoice
                         selected={form.plusOneSide}
@@ -366,134 +325,10 @@ export function RSVPForm() {
                         compact
                       />
                     </div>
-                    <Checkbox
-                      label="I confirm my +1 has agreed to participate and has read the privacy policy"
-                      checked={form.plusOneConsent}
-                      onChange={(v) => update("plusOneConsent", v)}
-                    />
                   </div>
                 )}
               </Section>
             )}
-
-            {/* ---- CHOOSE YOUR SIDE ---- */}
-            <Section>
-              <h2 className="text-2xl font-bold tracking-tight mb-2">Choose your side</h2>
-              <p className="text-sm text-[var(--color-text-muted)] mb-6">
-                This determines your team, your missions, and your experience. Choose carefully.
-              </p>
-              <SideChoice
-                selected={form.side}
-                onSelect={(s) => update("side", s)}
-              />
-            </Section>
-
-            {/* ---- THE GAME ---- */}
-            <Section>
-              <div className="space-y-4">
-                <h2 className="text-2xl font-bold tracking-tight">Let's play a game</h2>
-                <p className="text-[var(--color-text-muted)] text-sm leading-relaxed max-w-lg">
-                  Between now and premiere night, we're running something. A scavenger hunt across
-                  the real world and the digital one. You'll be placed on a team. Given weekly missions
-                  tied to the film's themes. Compete against other teams for a prize announced at the
-                  afterparty. Your missions depend on which side you chose.
-                </p>
-                {codeSubmitted ? (
-                  <>
-                    <div className="flex items-center justify-between pt-2">
-                      <span className="text-sm font-medium">I'm in</span>
-                      <Toggle
-                        checked={form.gameOptIn}
-                        onChange={(v) => update("gameOptIn", v)}
-                      />
-                    </div>
-                    {form.gameOptIn && (
-                      <div className="space-y-5 mt-4 pl-5 border-l-2 border-[var(--color-border)]">
-                        <p className="text-sm text-[var(--color-text-muted)]">
-                          Play with friends or get matched with strangers?
-                        </p>
-                        <div className="flex gap-3">
-                          <button
-                            type="button"
-                            onClick={() => update("teamPref", "friends")}
-                            className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium border transition-all ${
-                              form.teamPref === "friends"
-                                ? "border-white bg-white/10 text-white"
-                                : "border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-border-hover)]"
-                            }`}
-                          >
-                            People I know
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => update("teamPref", "matched")}
-                            className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium border transition-all ${
-                              form.teamPref === "matched"
-                                ? "border-white bg-white/10 text-white"
-                                : "border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-border-hover)]"
-                            }`}
-                          >
-                            Match me
-                          </button>
-                        </div>
-                        {form.teamPref === "friends" && (
-                          <div className="space-y-4">
-                            <p className="text-xs text-[var(--color-text-dim)]">
-                              Add the people you want on your team. Name plus email or phone.
-                            </p>
-                            {form.friendRequests.map((friend, i) => (
-                              <div key={i} className="flex gap-2 items-start">
-                                <div className="flex-1 space-y-2">
-                                  <input
-                                    type="text"
-                                    value={friend.name}
-                                    onChange={(e) => updateFriend(i, "name", e.target.value)}
-                                    placeholder="Name"
-                                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-dim)] focus:outline-none focus:border-[var(--color-border-hover)] transition-colors"
-                                  />
-                                  <input
-                                    type="text"
-                                    value={friend.contact}
-                                    onChange={(e) => updateFriend(i, "contact", e.target.value)}
-                                    placeholder="Email or phone"
-                                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-dim)] focus:outline-none focus:border-[var(--color-border-hover)] transition-colors"
-                                  />
-                                </div>
-                                {form.friendRequests.length > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => removeFriend(i)}
-                                    className="mt-2 text-[var(--color-text-dim)] hover:text-[var(--color-text-muted)] transition-colors p-1"
-                                    aria-label="Remove"
-                                  >
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                      <path d="M4 4L12 12M12 4L4 12" />
-                                    </svg>
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                            <button
-                              type="button"
-                              onClick={addFriend}
-                              className="text-sm text-[var(--color-text-muted)] hover:text-white transition-colors"
-                            >
-                              + Add another
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <Toggle
-                    checked={form.gameNotify}
-                    onChange={(v) => update("gameNotify", v)}
-                    label="Let me know when the game starts"
-                  />
-                )}
-              </div>
-            </Section>
 
             {/* ---- PRIVACY ---- */}
             <Section>
@@ -531,7 +366,7 @@ export function RSVPForm() {
               {submitting
                 ? "Processing..."
                 : codeSubmitted
-                ? "Confirm RSVP"
+                ? "I'm in"
                 : "Reserve my spot"}
             </button>
           </form>
@@ -548,7 +383,6 @@ export function RSVPForm() {
             className="relative w-full max-w-4xl mx-4 aspect-video rounded-2xl overflow-hidden bg-black"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Replace this with the actual trailer embed URL */}
             <div className="absolute inset-0 flex items-center justify-center text-[var(--color-text-muted)]">
               <p className="text-sm">Trailer embed goes here</p>
             </div>
@@ -704,9 +538,9 @@ function SideChoice({
         </div>
         {!compact && (
           <p className="text-xs text-[var(--color-text-muted)] mt-3 leading-relaxed">
-            Build new technology. Build relationships. Forgive quickly. Progress is the only
-            lasting solution. Work within the system, because that's where the real levers are.
-            When something's broken, you fix it, improve it, make it better than it was.
+            You believe the system can work if the right people show up. You'd rather
+            make something than tear something down. Your missions will ask you to
+            create, connect, and put skin in the game.
           </p>
         )}
       </button>
@@ -729,13 +563,26 @@ function SideChoice({
         </div>
         {!compact && (
           <p className="text-xs text-[var(--color-text-muted)] mt-3 leading-relaxed">
-            Take criminals to task. Pry the system from their grubby hands. When the system
-            fails us, we need to take action. Social movements, revolutions, fighting for the
-            little guy. When something's broken beyond repair, you don't patch it. You tear it
-            down and build something new from the ashes.
+            You think the whole thing needs to go. Not out of nihilism, out of
+            honesty. Your missions will ask you to let go, push limits, and prove
+            you mean it.
           </p>
         )}
       </button>
     </div>
   );
 }
+
+/* ============================================================
+   ALL 10 COPY OPTIONS (for reference — pick one and set HERO_COPY above)
+   1. "A film seven years in the making. A question that won't leave you alone: when the system is rigged, do you fix it or burn it? The answer starts with you."
+   2. "You're holding an invitation most people will never see. Come find out what happens when the audience becomes part of the story."
+   3. "Reality Games isn't just a movie. It's a test. Pick a side. Complete missions. Win something real. This is your way in."
+   4. "450 seats. One night. A film about AI, manipulation, and what happens when people fight back. If you're reading this, someone thought you should be there."
+   5. "Something is happening in San Francisco on May 16. It starts as a film premiere. It becomes something else. The rest unfolds when you say yes."
+   6. "We've been building this thing for nearly a decade. Hundreds of artists, one weird obsession with how stories get weaponized. On May 16, we're finally screening it (and throwing a party that might be slightly unhinged). You're invited. Grab your ticket before we run out of chairs."
+   7. "Someone sent you a deepfake video to get you here. That should tell you something about the film. Reality Games is a story about who controls the narrative, and what happens when the answer is 'maybe not you.' May 16 at the Victoria Theater. Come see if you can tell what's real by the end."
+   8. "A screening. An afterparty with exhibits about AI and disinformation. A game that starts the moment you RSVP and runs all the way through premiere night. 450 seats, one evening, more moving parts than we probably should've attempted. May 16, Victoria Theater, San Francisco."
+   9. "You're getting this before the general public. 450 seats at the Victoria Theater, and we're filling the room with the people we actually want in it first. The premiere includes the film, an afterparty, and a game we've been quietly building alongside the movie. RSVP now; presale closes when the seats are gone."
+   10. "Something is already happening. (Check the video that brought you here.) The premiere on May 16 is one piece of a larger thing we can't fully explain on a webpage. There's a film, a party, a game, and a choice you'll need to make. We'll say more soon. For now: claim your seat."
+   ============================================================ */
