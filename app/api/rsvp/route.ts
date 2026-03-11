@@ -82,7 +82,7 @@ async function appendToSheet(row: string[]) {
   }
 
   const accessToken = await getAccessToken();
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Sheet1!A:A:append?valueInputOption=USER_ENTERED`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/RSVPs!A:A:append?valueInputOption=USER_ENTERED`;
 
   const res = await fetch(url, {
     method: "POST",
